@@ -1,0 +1,332 @@
+import numpy as np
+import plotly.graph_objects as go
+
+# =====================================================
+# PARAMETERS
+# =====================================================
+
+RAID_SIZE = 250
+
+NUM_FRAMES = 100
+
+AEGIS_PK = 0.82
+THAAD_PK = 0.87
+PATRIOT_PK = 0.92
+
+AEGIS_SHOTS = 2
+THAAD_SHOTS = 2
+PATRIOT_SHOTS = 1
+
+AEGIS_INV = 80
+THAAD_INV = 60
+PATRIOT_INV = 120
+
+# =====================================================
+# EFFECTIVE PK
+# =====================================================
+
+def effective_pk(pk, shots):
+    return 1 - (1 - pk) ** shots
+
+AEGIS_EFF = effective_pk(
+    AEGIS_PK,
+    AEGIS_SHOTS
+)
+
+THAAD_EFF = effective_pk(
+    THAAD_PK,
+    THAAD_SHOTS
+)
+
+PATRIOT_EFF = effective_pk(
+    PATRIOT_PK,
+    PATRIOT_SHOTS
+)
+
+# =====================================================
+# SINGLE RAID
+# =====================================================
+
+def run_raid():
+
+    missiles_x = []
+    missiles_y = []
+    missiles_color = []
+
+    aegis_remaining = AEGIS_INV
+    thaad_remaining = THAAD_INV
+    patriot_remaining = PATRIOT_INV
+
+    aegis_kills = 0
+    thaad_kills = 0
+    patriot_kills = 0
+    leaks = 0
+
+    for missile in range(RAID_SIZE):
+
+        destroyed = False
+
+        # ---------------------------------
+        # AEGIS
+        # ---------------------------------
+
+        if aegis_remaining >= AEGIS_SHOTS:
+
+            aegis_remaining -= AEGIS_SHOTS
+
+            if np.random.rand() < AEGIS_EFF:
+
+                missiles_x.append(missile)
+                missiles_y.append(3)
+
+                missiles_color.append("dodgerblue")
+
+                aegis_kills += 1
+
+                destroyed = True
+
+        # ---------------------------------
+        # THAAD
+        # ---------------------------------
+
+        if (
+            not destroyed and
+            thaad_remaining >= THAAD_SHOTS
+        ):
+
+            thaad_remaining -= THAAD_SHOTS
+
+            if np.random.rand() < THAAD_EFF:
+
+                missiles_x.append(missile)
+                missiles_y.append(2)
+
+                missiles_color.append("lime")
+
+                thaad_kills += 1
+
+                destroyed = True
+
+        # ---------------------------------
+        # PATRIOT
+        # ---------------------------------
+
+        if (
+            not destroyed and
+            patriot_remaining >= PATRIOT_SHOTS
+        ):
+
+            patriot_remaining -= PATRIOT_SHOTS
+
+            if np.random.rand() < PATRIOT_EFF:
+
+                missiles_x.append(missile)
+                missiles_y.append(1)
+
+                missiles_color.append("gold")
+
+                patriot_kills += 1
+
+                destroyed = True
+
+        # ---------------------------------
+        # LEAKER
+        # ---------------------------------
+
+        if not destroyed:
+
+            missiles_x.append(missile)
+            missiles_y.append(0)
+
+            missiles_color.append("red")
+
+            leaks += 1
+
+    return (
+        missiles_x,
+        missiles_y,
+        missiles_color,
+        aegis_kills,
+        thaad_kills,
+        patriot_kills,
+        leaks
+    )
+
+# =====================================================
+# CREATE FRAMES
+# =====================================================
+
+frames = []
+
+print("Generating Monte Carlo frames...")
+
+for run in range(NUM_FRAMES):
+
+    (
+        x,
+        y,
+        colors,
+        aegis_kills,
+        thaad_kills,
+        patriot_kills,
+        leaks
+    ) = run_raid()
+
+    frame = go.Frame(
+
+        data=[
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color=colors
+                )
+            )
+        ],
+
+        name=str(run),
+
+        layout=go.Layout(
+
+            title=(
+                f"Monte Carlo Raid #{run+1}<br>"
+                f"Aegis: {aegis_kills} | "
+                f"THAAD: {thaad_kills} | "
+                f"Patriot: {patriot_kills} | "
+                f"Leakers: {leaks}"
+            )
+        )
+    )
+
+    frames.append(frame)
+
+# =====================================================
+# INITIAL FRAME
+# =====================================================
+
+fig = go.Figure(
+
+    data=[
+        go.Scatter(
+            x=[],
+            y=[],
+            mode="markers"
+        )
+    ],
+
+    frames=frames
+)
+
+# =====================================================
+# LAYOUT
+# =====================================================
+
+fig.update_layout(
+
+    template="plotly_dark",
+
+    width=1200,
+    height=700,
+
+    title="Monte Carlo Missile Defense Simulation",
+
+    xaxis=dict(
+        title="Incoming Missile Number",
+        range=[0, RAID_SIZE]
+    ),
+
+    yaxis=dict(
+        title="Outcome Layer",
+        tickvals=[0,1,2,3],
+        ticktext=[
+            "Leaker",
+            "Patriot",
+            "THAAD",
+            "Aegis"
+        ],
+        range=[-0.5,3.5]
+    ),
+
+    updatemenus=[
+
+        dict(
+
+            type="buttons",
+
+            buttons=[
+
+                dict(
+                    label="Play",
+                    method="animate",
+                    args=[
+                        None,
+                        {
+                            "frame":
+                                {"duration":300},
+                            "fromcurrent":
+                                True
+                        }
+                    ]
+                ),
+
+                dict(
+                    label="Pause",
+                    method="animate",
+                    args=[
+                        [None],
+                        {
+                            "frame":
+                                {"duration":0},
+                            "mode":
+                                "immediate"
+                        }
+                    ]
+                )
+            ]
+        )
+    ],
+
+    sliders=[
+
+        dict(
+
+            currentvalue={
+                "prefix":
+                    "Simulation Run: "
+            },
+
+            steps=[
+
+                dict(
+                    method="animate",
+                    args=[
+                        [str(i)],
+                        {
+                            "mode":
+                                "immediate"
+                        }
+                    ],
+                    label=str(i)
+                )
+
+                for i in range(NUM_FRAMES)
+            ]
+        )
+    ]
+)
+
+# =====================================================
+# SAVE
+# =====================================================
+
+fig.show()
+
+fig.write_html(
+    "animated_monte_carlo_missile_defense.html"
+)
+
+print(
+    "Saved: animated_monte_carlo_missile_defense.html"
+)
