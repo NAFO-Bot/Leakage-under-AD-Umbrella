@@ -1,7 +1,7 @@
 # Leakage-under-AD-Umbrella
 This is a first-order approximation check Read.Me
 Threat Assumptions
-Nominal raid size is 400 missiles.
+Nominal raid size is 250 missiles.
 Actual raid size varies according to a Gaussian distribution with 5% standard deviation. (This is so every raid is not the exact same.) Better Visuals:)
 Every incoming missile is treated as an identical threat.
 All incoming missiles are assumed to be successfully detected and tracked.
